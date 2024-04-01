@@ -1,0 +1,61 @@
+---
+title: "Stats 101C Final Project - Random Forest (Jamie)"
+author: "James Griffith - UID: 805458693"
+date: "2023-12-06"
+output: html_document
+---
+
+## Loading Data and Normalizing
+```{r, warning=FALSE}
+### Stats 101C Final Project - Jamie's Portion ###
+
+# Set seed
+set.seed(123)
+# Load Libraries
+library(randomForest) # the randomForest package was used to perform the random forest analysis.
+
+# Read in the pre-processed data.
+x_pca <- read.csv(header = FALSE,"C:\\Users\\jamgr\\OneDrive\\Documents\\Stats 101C\\Datasets\\X_pca.csv")
+y <- read.csv( "C:\\Users\\jamgr\\OneDrive\\Documents\\Stats 101C\\Datasets\\y.csv")
+y[,5] <- as.factor(y[,5]) # Switch to encoding y as a factor so it will be processed as a classification problem by the randomForest function. This is required to have randomForest perform classification rather than regression (as far as I can tell after going through the documentation a few times)
+# Normalize
+x_pca_n <- as.data.frame(scale(x_pca)) # Normalize using scale() and then converting the Matrix output to a data frame.
+
+## Split into training and testing data.
+sampled_values <- sample(nrow(x_pca_n), nrow(x_pca_n)*.8) # Sample 40000 entries to put in training set (80/20 split)
+train <- x_pca_n[sampled_values, ] # Create training data
+test <- x_pca_n[-sampled_values, ] # Create testing data
+train[,51] <- y[sampled_values, 5] # Append y to the training data (note I prefer this method for clarity since training[,51] is more understandable than y[sampled_values,5] in later code. You can also just use y[sampled_values,5] or y[-sampled_values,5], directly instead if you want to keep it separate.)
+test[,51] <- y[-sampled_values, 5] # Create training data
+```
+
+## Fit Random Forest to the training dataset
+``` {r, warning = FALSE}
+## Fitting Random Forest to the train dataset 
+classifier_RF = randomForest(x = train[,-51], 
+                             y = train[,51], 
+                             ntree = 50) # Number of trees, this was the highest value my device could compute in a reasonable amount of time.
+classifier_RF # I'm pretty sure this tells us our training error/Performance on the training set. (OOB error rate and confusion matrix for the training set)
+```
+
+## Use the model on the testing dataset
+We obtain an error value of ~18%, the most important variables for prediction were columns 3,4,2,10, and 5. Increasing the number of trees slightly increases accuracy in exchange for a lot more computation. (ntree = 50 yields ~19% error, ntree = 500 yields ~18% error)
+``` {r, warning = FALSE}
+## Testing Data
+# Predicting the Test set results 
+y_pred_rf = predict(classifier_RF, type="class", newdata = test) 
+# Confusion Matrix for test data
+confusion_mtx_rf = table(test[,51], y_pred_rf) 
+confusion_mtx_rf 
+# Compute error rate for test data
+error_rf <- mean(y_pred_rf != test[,51])
+error_rf # Current output is 0.1794
+
+## Additional Code to look at which variables were the most helpful/important
+# Variable importance 
+importance(classifier_RF) # Get measures of each variable's importance.
+# Variable importance plot 
+varImpPlot(classifier_RF) # Plot those values
+
+
+```
